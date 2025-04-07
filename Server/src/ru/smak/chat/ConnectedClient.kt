@@ -2,33 +2,17 @@ package ru.smak.chat
 
 import java.io.PrintWriter
 import java.net.Socket
-import java.util.Scanner
+import java.util.*
 import kotlin.concurrent.thread
 
-class Client(
-    val host: String,
-    val port: Int,
-) {
-    val socket = Socket(host, port)
+class ConnectedClient(val socket: Socket) {
+
     private var isRunnig = true
     private val scanner = Scanner(socket.getInputStream())
     private val writer = PrintWriter(socket.getOutputStream())
-    private var userScanner = Scanner(System.`in`)
 
-    init {
+    init{
         startMessageAccepting()
-
-        thread {
-            while (isRunnig){
-                val userData = userScanner.nextLine()
-                if (userData.isNotBlank()){
-                    sendMessage(userData)
-                } else {
-                    stop()
-                }
-            }
-            socket.close()
-        }
     }
 
     private fun startMessageAccepting(){
@@ -46,7 +30,8 @@ class Client(
     }
 
     private fun parse(message: String){
-        println("Сервер ответил: $message")
+        println("Клиент прислал: $message")
+        sendMessage(message)
     }
 
     fun sendMessage(message: String){
