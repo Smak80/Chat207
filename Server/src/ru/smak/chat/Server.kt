@@ -1,20 +1,31 @@
 package ru.smak.chat
 
-import java.io.PrintWriter
+import kotlinx.coroutines.*
+import java.net.InetSocketAddress
 import java.net.ServerSocket
-import java.util.*
+import java.nio.channels.AsynchronousServerSocketChannel
 import kotlin.concurrent.thread
+import kotlin.coroutines.suspendCoroutine
 
 class Server(
-    val port: Int = 5207
+    port: Int = 5207
 ) {
 
-    val serverSocket = ServerSocket(port)
+    val serverSocket = AsynchronousServerSocketChannel.open()
+    private val serverScope = CoroutineScope(Dispatchers.IO)
 
     init{
-        thread {
-            while (true) {
-                val socket = serverSocket.accept()
+
+        serverSocket.bind(InetSocketAddress(port))
+
+        serverScope.launch {
+            while(true){
+                val socket = suspendCoroutine {
+                    serverSocket.accept(
+                        null,
+                        ActionCompletionHandler(it)
+                    )
+                }
                 ConnectedClient(socket)
             }
             serverSocket.close()
