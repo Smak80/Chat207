@@ -2,9 +2,7 @@ package ru.smak.chat
 
 import kotlinx.coroutines.*
 import java.net.InetSocketAddress
-import java.net.ServerSocket
 import java.nio.channels.AsynchronousServerSocketChannel
-import kotlin.concurrent.thread
 import kotlin.coroutines.suspendCoroutine
 
 class Server(
@@ -18,7 +16,7 @@ class Server(
 
         serverSocket.bind(InetSocketAddress(port))
 
-        serverScope.launch {
+        runBlocking {
             while(true){
                 val socket = suspendCoroutine {
                     serverSocket.accept(

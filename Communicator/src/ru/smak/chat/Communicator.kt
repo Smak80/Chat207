@@ -1,28 +1,42 @@
 package ru.smak.chat
 
-import java.io.PrintWriter
-import java.net.Socket
+import kotlinx.coroutines.*
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.util.*
-import kotlin.concurrent.thread
 import kotlin.coroutines.suspendCoroutine
+
 
 class Communicator(
     val socket: AsynchronousSocketChannel,
 ) {
     private var parse: ((String)->Unit)? = null
+    private val communicatorScope = CoroutineScope(Dispatchers.IO)
     var isRunnig = false
         private set
     //private val scanner = Scanner(socket.getInputStream())
     //private val writer = PrintWriter(socket.getOutputStream())
 
     private fun startMessageAccepting(){
-        thread {
+        communicatorScope.launch {
             while(isRunnig){
                 try {
-                    val data = scanner.nextLine()
-                    parse?.invoke(data)
+                    var capacity = Int.SIZE_BYTES
+                    repeat(2){
+                        val buf = ByteBuffer.allocate(capacity)
+                        suspendCoroutine {
+                            socket.read(buf,
+                                null,
+                                ActionCompletionHandler(it))
+                        }
+                        buf.flip()
+                        if (it == 0) capacity = buf.getInt()
+                        else {
+                            val data = Charsets.UTF_8.decode(buf).toString()
+                            parse?.invoke(data)
+                        }
+                    }
+
                 } catch (_: Throwable){
                     break
                 }
@@ -46,7 +60,7 @@ class Communicator(
     }
 
     fun start(parser: (String)->Unit){
-        if (socket.isClosed) throw Exception("Client disconnected")
+        if (!socket.isOpen) throw Exception("Client disconnected")
         parse = parser
         if (!isRunnig) {
             isRunnig = true

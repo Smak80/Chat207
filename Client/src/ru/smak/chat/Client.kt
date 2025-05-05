@@ -1,8 +1,10 @@
 package ru.smak.chat
 
-import java.net.Socket
+import kotlinx.coroutines.*
+import java.net.InetSocketAddress
+import java.nio.channels.AsynchronousSocketChannel
 import java.util.Scanner
-import kotlin.concurrent.thread
+import kotlin.coroutines.suspendCoroutine
 
 class Client(
     val host: String,
@@ -10,15 +12,23 @@ class Client(
 ) {
 
     private var userScanner = Scanner(System.`in`)
-    private val communicator = Communicator(Socket(host, port))
+    private val socket = AsynchronousSocketChannel.open()
+    private val communicator = Communicator (socket)
+    private val clientScope = CoroutineScope(Dispatchers.IO)
 
     init {
-        communicator.start(::parse)
-
-        thread {
-            while (communicator.isRunnig){
+        runBlocking {
+            suspendCoroutine {
+                socket.connect(
+                    InetSocketAddress(host, port),
+                    null,
+                    ActionCompletionHandler(it)
+                )
+            }
+            communicator.start(::parse)
+            while (communicator.isRunnig) {
                 val userData = userScanner.nextLine()
-                if (userData.isNotBlank()){
+                if (userData.isNotBlank()) {
                     communicator.sendMessage(userData)
                 } else {
                     stop()
